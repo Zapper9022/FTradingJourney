@@ -12,7 +12,9 @@ interface ApiKeyInputProps {
 }
 
 const ApiKeyInput = ({ onKeySubmit }: ApiKeyInputProps) => {
-  const [apiKey, setApiKey] = useState<string>("");
+  // Default API Key provided by the user
+  const defaultApiKey = "6a76194845mshbae6da7834eba7dp19b948jsnce44c51e371b";
+  const [apiKey, setApiKey] = useState<string>(defaultApiKey);
   
   useEffect(() => {
     // Check if API key is already stored in localStorage
@@ -20,8 +22,12 @@ const ApiKeyInput = ({ onKeySubmit }: ApiKeyInputProps) => {
     if (storedKey) {
       setApiKey(storedKey);
       onKeySubmit(storedKey);
+    } else {
+      // Automatically use the default key if none is stored
+      localStorage.setItem("rapidapi_key", defaultApiKey);
+      onKeySubmit(defaultApiKey);
     }
-  }, [onKeySubmit]);
+  }, [onKeySubmit, defaultApiKey]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,9 +53,9 @@ const ApiKeyInput = ({ onKeySubmit }: ApiKeyInputProps) => {
   return (
     <Card className="bg-slate-800/50 border-slate-700">
       <CardHeader>
-        <CardTitle className="text-white">RapidAPI Key Required</CardTitle>
+        <CardTitle className="text-white">Stock Price API</CardTitle>
         <CardDescription className="text-slate-300">
-          Enter your RapidAPI key to fetch stock prices
+          A default API key is provided for you, but you can use your own if needed
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -68,7 +74,7 @@ const ApiKeyInput = ({ onKeySubmit }: ApiKeyInputProps) => {
             />
             <p className="text-xs text-slate-400 flex items-start gap-1">
               <InfoIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-              <span>Get your key from <a href="https://rapidapi.com/suneetk92/api/latest-stock-price/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">RapidAPI</a>. Your key is stored locally and never sent to our servers.</span>
+              <span>A default key is provided, but you can get your own from <a href="https://rapidapi.com/suneetk92/api/latest-stock-price/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">RapidAPI</a> if needed.</span>
             </p>
           </div>
           <Button 
