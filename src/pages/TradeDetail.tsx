@@ -5,16 +5,20 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, DollarSign, Briefcase, TrendingUp, TrendingDown, Clock } from "lucide-react";
+import { ArrowLeft, DollarSign, Briefcase, TrendingUp, TrendingDown, Clock, RefreshCw } from "lucide-react";
 import { Trade } from "./Index";
 import { format } from "date-fns";
+import { toast } from "@/hooks/use-toast";
 
 const TradeDetail = () => {
   const { tradeId } = useParams<{ tradeId: string }>();
   const [trade, setTrade] = useState<Trade | null>(null);
   const [entryPrice, setEntryPrice] = useState<string>("");
   const [currentPrice, setCurrentPrice] = useState<string>("");
+  const [sharesQuantity, setSharesQuantity] = useState<string>("0");
   const [pnl, setPnl] = useState<number | null>(null);
+  const [pnlValue, setPnlValue] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -36,12 +40,82 @@ const TradeDetail = () => {
         if (foundTrade.pnl !== null) {
           setPnl(foundTrade.pnl);
         }
+        
+        // Set shares quantity if exists
+        if (foundTrade.sharesQuantity) {
+          setSharesQuantity(foundTrade.sharesQuantity.toString());
+        }
+        
+        // Fetch current price
+        if (foundTrade.ticker) {
+          fetchCurrentPrice(foundTrade.ticker);
+        }
       }
     }
   }, [tradeId]);
 
   const goBack = () => {
     navigate('/trades');
+  };
+
+  const fetchCurrentPrice = async (ticker: string) => {
+    setIsLoading(true);
+    try {
+      // Using Yahoo Finance API (via a proxy to avoid CORS issues)
+      const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d`, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch stock data');
+      }
+      
+      const data = await response.json();
+      
+      if (data.chart.result && data.chart.result[0].meta) {
+        const price = data.chart.result[0].meta.regularMarketPrice;
+        setCurrentPrice(price.toString());
+        
+        // Calculate PnL automatically if we have entry price
+        if (entryPrice) {
+          calculatePnLWithPrice(parseFloat(entryPrice), price);
+        }
+        
+        toast({
+          title: "Price Updated",
+          description: `Current price for ${ticker}: $${price.toFixed(2)}`,
+        });
+      } else {
+        throw new Error('No price data available');
+      }
+    } catch (error) {
+      console.error("Error fetching stock data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch current price. Using manual input.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const calculatePnLWithPrice = (entry: number, current: number) => {
+    if (!entry || !current || entry <= 0 || current <= 0) {
+      return;
+    }
+    
+    const calculatedPnl = ((current - entry) / entry) * 100;
+    setPnl(calculatedPnl);
+    
+    // Calculate PnL value if shares quantity is provided
+    const shares = parseFloat(sharesQuantity || "0");
+    if (shares > 0) {
+      const pnlVal = shares * (current - entry);
+      setPnlValue(pnlVal);
+    }
   };
 
   const calculatePnL = () => {
@@ -51,9 +125,8 @@ const TradeDetail = () => {
 
     const entry = parseFloat(entryPrice);
     const current = parseFloat(currentPrice);
-    const calculatedPnl = ((current - entry) / entry) * 100;
     
-    setPnl(calculatedPnl);
+    calculatePnLWithPrice(entry, current);
 
     // Update trade in localStorage
     const savedTrades = localStorage.getItem('trades');
@@ -64,7 +137,8 @@ const TradeDetail = () => {
           ? { 
               ...t, 
               entryPrice: entry,
-              pnl: calculatedPnl,
+              pnl: pnl,
+              sharesQuantity: parseFloat(sharesQuantity || "0"),
               isOpen: true
             } 
           : t
@@ -75,7 +149,8 @@ const TradeDetail = () => {
       setTrade({
         ...trade,
         entryPrice: entry,
-        pnl: calculatedPnl,
+        pnl: pnl,
+        sharesQuantity: parseFloat(sharesQuantity || "0"),
         isOpen: true
       });
     }
@@ -87,6 +162,8 @@ const TradeDetail = () => {
     const entry = parseFloat(entryPrice);
     const current = parseFloat(currentPrice);
     const calculatedPnl = ((current - entry) / entry) * 100;
+    const shares = parseFloat(sharesQuantity || "0");
+    const pnlVal = shares > 0 ? shares * (current - entry) : null;
 
     // Update trade in localStorage
     const savedTrades = localStorage.getItem('trades');
@@ -100,6 +177,8 @@ const TradeDetail = () => {
               exitPrice: current,
               exitDate: new Date(),
               pnl: calculatedPnl,
+              pnlValue: pnlVal,
+              sharesQuantity: shares,
               isOpen: false
             } 
           : t
@@ -113,8 +192,21 @@ const TradeDetail = () => {
         exitPrice: current,
         exitDate: new Date(),
         pnl: calculatedPnl,
+        pnlValue: pnlVal,
+        sharesQuantity: shares,
         isOpen: false
       });
+      
+      toast({
+        title: "Trade Closed",
+        description: `${trade.ticker} trade has been closed with ${calculatedPnl.toFixed(2)}% P&L`,
+      });
+    }
+  };
+
+  const refreshPrice = () => {
+    if (trade?.ticker) {
+      fetchCurrentPrice(trade.ticker);
     }
   };
 
@@ -191,6 +283,26 @@ const TradeDetail = () => {
                 />
               </div>
             </div>
+            
+            <div>
+              <Label htmlFor="shares-quantity" className="text-sm text-slate-300 mb-1 block">
+                Number of Shares
+              </Label>
+              <div className="flex items-center space-x-2">
+                <Briefcase className="w-5 h-5 text-green-400" />
+                <Input
+                  id="shares-quantity"
+                  type="number"
+                  step="1"
+                  min="0"
+                  value={sharesQuantity}
+                  onChange={(e) => setSharesQuantity(e.target.value)}
+                  placeholder="0"
+                  className="bg-slate-700 border-slate-600 text-white placeholder-slate-400"
+                  disabled={!trade.isOpen && trade.entryPrice !== null}
+                />
+              </div>
+            </div>
 
             {trade.isOpen && (
               <div>
@@ -209,6 +321,15 @@ const TradeDetail = () => {
                     placeholder="0.00"
                     className="bg-slate-700 border-slate-600 text-white placeholder-slate-400"
                   />
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    onClick={refreshPrice} 
+                    disabled={isLoading}
+                    className="h-10 w-10 border-slate-600 text-blue-400 hover:text-blue-300"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  </Button>
                 </div>
               </div>
             )}
@@ -247,13 +368,20 @@ const TradeDetail = () => {
             <CardContent className="p-6">
               <div className="text-center">
                 <h2 className="text-lg text-slate-300 mb-2">Profit & Loss</h2>
-                <div className={`text-3xl font-bold ${pnl >= 0 ? 'text-green-400' : 'text-red-400'} flex items-center justify-center`}>
+                <div className={`text-3xl font-bold ${pnl >= 0 ? 'text-green-400' : 'text-red-400'} flex items-center justify-center mb-2`}>
                   {pnl >= 0 ? 
                     <TrendingUp className="w-6 h-6 mr-2" /> : 
                     <TrendingDown className="w-6 h-6 mr-2" />
                   }
                   {pnl.toFixed(2)}%
                 </div>
+                
+                {/* P&L Value Display */}
+                {pnlValue !== null && parseFloat(sharesQuantity) > 0 && (
+                  <div className={`text-xl ${pnlValue >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    ${Math.abs(pnlValue).toFixed(2)} {pnlValue >= 0 ? 'profit' : 'loss'}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

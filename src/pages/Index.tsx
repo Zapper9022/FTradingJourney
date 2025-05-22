@@ -23,6 +23,8 @@ export interface Trade {
   entryDate: Date;
   exitDate: Date | null;
   pnl: number | null;
+  pnlValue: number | null;
+  sharesQuantity: number | null;
   isOpen: boolean;
 }
 
