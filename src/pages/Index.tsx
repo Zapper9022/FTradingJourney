@@ -99,6 +99,8 @@ const Index = () => {
         entryDate: new Date(),
         exitDate: null,
         pnl: null,
+        pnlValue: null,
+        sharesQuantity: null,
         isOpen: true
       };
 
