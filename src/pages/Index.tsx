@@ -2,7 +2,8 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, TrendingUp, CheckCircle, Clock } from "lucide-react";
+import { Plus, TrendingUp, CheckCircle, Clock, BarChart3 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import StrategyCard from "@/components/StrategyCard";
 import CreateStrategyModal from "@/components/CreateStrategyModal";
 import ActiveChecklist from "@/components/ActiveChecklist";
@@ -11,6 +12,18 @@ export interface ChecklistItem {
   id: string;
   text: string;
   completed: boolean;
+}
+
+export interface Trade {
+  id: string;
+  strategyId: string;
+  ticker: string;
+  entryPrice: number | null;
+  exitPrice: number | null;
+  entryDate: Date;
+  exitDate: Date | null;
+  pnl: number | null;
+  isOpen: boolean;
 }
 
 export interface TradingStrategy {
@@ -43,6 +56,8 @@ const Index = () => {
   const [strategies, setStrategies] = useState<TradingStrategy[]>([defaultStrategy]);
   const [activeStrategy, setActiveStrategy] = useState<TradingStrategy | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [currentTicker, setCurrentTicker] = useState<string>("");
+  const navigate = useNavigate();
 
   const handleCreateStrategy = (name: string, description: string, checklist: string[]) => {
     const newStrategy: TradingStrategy = {
@@ -67,16 +82,44 @@ const Index = () => {
       checklist: strategy.checklist.map(item => ({ ...item, completed: false }))
     };
     setActiveStrategy(resetStrategy);
+    setCurrentTicker("");
   };
 
   const handleCompleteChecklist = () => {
     if (activeStrategy) {
+      // Create new trade
+      const newTrade: Trade = {
+        id: Date.now().toString(),
+        strategyId: activeStrategy.id,
+        ticker: currentTicker,
+        entryPrice: null,
+        exitPrice: null,
+        entryDate: new Date(),
+        exitDate: null,
+        pnl: null,
+        isOpen: true
+      };
+
+      // Save trade to localStorage
+      const existingTrades = JSON.parse(localStorage.getItem('trades') || '[]');
+      localStorage.setItem('trades', JSON.stringify([...existingTrades, newTrade]));
+
+      // Update strategy completedTrades count
       setStrategies(strategies.map(s => 
         s.id === activeStrategy.id 
           ? { ...s, completedTrades: s.completedTrades + 1 }
           : s
       ));
+      
+      // Save updated strategies to localStorage
+      localStorage.setItem('strategies', JSON.stringify(strategies.map(s => 
+        s.id === activeStrategy.id 
+          ? { ...s, completedTrades: s.completedTrades + 1 }
+          : s
+      )));
+
       setActiveStrategy(null);
+      setCurrentTicker("");
     }
   };
 
@@ -91,9 +134,27 @@ const Index = () => {
     }
   };
 
+  const handleTickerChange = (ticker: string) => {
+    setCurrentTicker(ticker.toUpperCase());
+  };
+
   const completedItems = activeStrategy?.checklist.filter(item => item.completed).length || 0;
   const totalItems = activeStrategy?.checklist.length || 0;
   const progressPercentage = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
+
+  const navigateToTradesHistory = () => {
+    navigate('/trades');
+  };
+
+  // Load strategies from localStorage on initial render
+  React.useEffect(() => {
+    const savedStrategies = localStorage.getItem('strategies');
+    if (savedStrategies) {
+      setStrategies(JSON.parse(savedStrategies));
+    } else {
+      localStorage.setItem('strategies', JSON.stringify([defaultStrategy]));
+    }
+  }, []);
 
   if (activeStrategy) {
     return (
@@ -103,6 +164,8 @@ const Index = () => {
         onBack={() => setActiveStrategy(null)}
         onUpdateItem={updateChecklistItem}
         progressPercentage={progressPercentage}
+        ticker={currentTicker}
+        onTickerChange={handleTickerChange}
       />
     );
   }
@@ -121,7 +184,7 @@ const Index = () => {
 
         {/* Stats Overview */}
         <div className="grid grid-cols-2 gap-4">
-          <Card className="bg-slate-800/50 border-slate-700">
+          <Card className="bg-slate-800/50 border-slate-700 cursor-pointer hover:bg-slate-800/70 transition-colors" onClick={navigateToTradesHistory}>
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-green-400">
                 {strategies.reduce((acc, s) => acc + s.completedTrades, 0)}
@@ -170,12 +233,19 @@ const Index = () => {
               Quick Start
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-3">
             <Button
               onClick={() => handleStartChecklist(defaultStrategy)}
               className="w-full bg-blue-600 hover:bg-blue-700 text-white"
             >
               Start Default Strategy
+            </Button>
+            <Button
+              onClick={navigateToTradesHistory}
+              className="w-full bg-slate-600 hover:bg-slate-700 text-white"
+            >
+              <BarChart3 className="w-4 h-4 mr-1" />
+              View All Trades
             </Button>
           </CardContent>
         </Card>

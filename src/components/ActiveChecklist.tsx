@@ -3,7 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, CheckCircle, Target } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, CheckCircle, Target, Briefcase } from "lucide-react";
 import { TradingStrategy } from "@/pages/Index";
 
 interface ActiveChecklistProps {
@@ -12,6 +14,8 @@ interface ActiveChecklistProps {
   onBack: () => void;
   onUpdateItem: (itemId: string, completed: boolean) => void;
   progressPercentage: number;
+  ticker: string;
+  onTickerChange: (ticker: string) => void;
 }
 
 const ActiveChecklist = ({ 
@@ -19,7 +23,9 @@ const ActiveChecklist = ({
   onComplete, 
   onBack, 
   onUpdateItem, 
-  progressPercentage 
+  progressPercentage,
+  ticker,
+  onTickerChange
 }: ActiveChecklistProps) => {
   const allCompleted = strategy.checklist.every(item => item.completed);
 
@@ -41,6 +47,25 @@ const ActiveChecklist = ({
             <p className="text-slate-400 text-sm">Complete all steps before trading</p>
           </div>
         </div>
+
+        {/* Ticker Input */}
+        <Card className="bg-slate-800/50 border-slate-700">
+          <CardContent className="p-4">
+            <Label htmlFor="ticker" className="text-sm text-slate-300 mb-1 block">
+              Ticker Symbol
+            </Label>
+            <div className="flex items-center space-x-2">
+              <Briefcase className="w-5 h-5 text-green-400" />
+              <Input
+                id="ticker"
+                value={ticker}
+                onChange={(e) => onTickerChange(e.target.value)}
+                placeholder="AAPL, MSFT, TSLA..."
+                className="bg-slate-700 border-slate-600 text-white placeholder-slate-400"
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Progress */}
         <Card className="bg-slate-800/50 border-slate-700">
@@ -106,21 +131,26 @@ const ActiveChecklist = ({
         {/* Complete Button */}
         <Button
           onClick={onComplete}
-          disabled={!allCompleted}
+          disabled={!allCompleted || !ticker.trim()}
           className={`w-full py-3 text-white font-medium ${
-            allCompleted
+            allCompleted && ticker.trim()
               ? 'bg-green-600 hover:bg-green-700'
               : 'bg-slate-600 cursor-not-allowed'
           }`}
         >
           <CheckCircle className="w-5 h-5 mr-2" />
-          {allCompleted ? 'Complete & Record Trade' : 'Complete All Steps First'}
+          {allCompleted && ticker.trim() 
+            ? 'Complete & Record Trade' 
+            : ticker.trim() 
+              ? 'Complete All Steps First' 
+              : 'Enter Ticker Symbol'
+          }
         </Button>
 
-        {allCompleted && (
+        {allCompleted && ticker.trim() && (
           <div className="text-center">
             <p className="text-green-400 text-sm font-medium">
-              ✅ All checks passed! Ready to trade.
+              ✅ All checks passed! Ready to trade {ticker.toUpperCase()}.
             </p>
           </div>
         )}
