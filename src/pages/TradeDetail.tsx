@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +8,7 @@ import { ArrowLeft, DollarSign, Briefcase, TrendingUp, TrendingDown, Clock, Refr
 import { Trade } from "./Index";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
+import ApiKeyInput from "@/components/ApiKeyInput";
 
 const TradeDetail = () => {
   const { tradeId } = useParams<{ tradeId: string }>();
@@ -19,9 +19,18 @@ const TradeDetail = () => {
   const [pnl, setPnl] = useState<number | null>(null);
   const [pnlValue, setPnlValue] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [apiKey, setApiKey] = useState<string>("");
+  const [hasApiKey, setHasApiKey] = useState<boolean>(false);
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Check if API key exists in localStorage
+    const storedKey = localStorage.getItem("rapidapi_key");
+    if (storedKey) {
+      setApiKey(storedKey);
+      setHasApiKey(true);
+    }
+
     // Load trade from localStorage
     const savedTrades = localStorage.getItem('trades');
     if (savedTrades) {
@@ -46,9 +55,9 @@ const TradeDetail = () => {
           setSharesQuantity(foundTrade.sharesQuantity.toString());
         }
         
-        // Fetch current price
-        if (foundTrade.ticker) {
-          fetchCurrentPrice(foundTrade.ticker);
+        // Fetch current price if API key exists
+        if (foundTrade.ticker && storedKey) {
+          fetchCurrentPrice(foundTrade.ticker, storedKey);
         }
       }
     }
@@ -58,15 +67,30 @@ const TradeDetail = () => {
     navigate('/trades');
   };
 
-  const fetchCurrentPrice = async (ticker: string) => {
+  const handleApiKeySubmit = (key: string) => {
+    setApiKey(key);
+    setHasApiKey(true);
+    
+    // Fetch price with new API key if trade exists
+    if (trade?.ticker) {
+      fetchCurrentPrice(trade.ticker, key);
+    }
+  };
+
+  const fetchCurrentPrice = async (ticker: string, key: string) => {
     setIsLoading(true);
     try {
-      // Using Yahoo Finance API (via a proxy to avoid CORS issues)
-      const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d`, {
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      // Using RapidAPI endpoint
+      const response = await fetch(
+        `https://latest-stock-price.p.rapidapi.com/timeseries?Symbol=${ticker}&Timescale=1&Period=1DAY`, 
+        {
+          headers: {
+            'x-rapidapi-host': 'latest-stock-price.p.rapidapi.com',
+            'x-rapidapi-key': key,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
       
       if (!response.ok) {
         throw new Error('Failed to fetch stock data');
@@ -74,8 +98,9 @@ const TradeDetail = () => {
       
       const data = await response.json();
       
-      if (data.chart.result && data.chart.result[0].meta) {
-        const price = data.chart.result[0].meta.regularMarketPrice;
+      if (data && data.length > 0) {
+        // RapidAPI format
+        const price = data[0].Last;
         setCurrentPrice(price.toString());
         
         // Calculate PnL automatically if we have entry price
@@ -85,7 +110,7 @@ const TradeDetail = () => {
         
         toast({
           title: "Price Updated",
-          description: `Current price for ${ticker}: $${price.toFixed(2)}`,
+          description: `Current price for ${ticker}: $${parseFloat(price).toFixed(2)}`,
         });
       } else {
         throw new Error('No price data available');
@@ -205,8 +230,8 @@ const TradeDetail = () => {
   };
 
   const refreshPrice = () => {
-    if (trade?.ticker) {
-      fetchCurrentPrice(trade.ticker);
+    if (trade?.ticker && apiKey) {
+      fetchCurrentPrice(trade.ticker, apiKey);
     }
   };
 
@@ -221,6 +246,31 @@ const TradeDetail = () => {
             </Button>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  // If API key is not set, show the API key input form
+  if (!hasApiKey) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-4">
+        <div className="max-w-md mx-auto space-y-6">
+          <div className="flex items-center space-x-3 py-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={goBack}
+              className="text-slate-300 hover:text-white hover:bg-slate-800"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <div className="flex-1">
+              <h1 className="text-xl font-semibold text-white">API Setup Required</h1>
+            </div>
+          </div>
+          
+          <ApiKeyInput onKeySubmit={handleApiKeySubmit} />
+        </div>
       </div>
     );
   }
