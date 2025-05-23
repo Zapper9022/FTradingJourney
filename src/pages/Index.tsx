@@ -7,6 +7,10 @@ import { useNavigate } from "react-router-dom";
 import StrategyCard from "@/components/StrategyCard";
 import CreateStrategyModal from "@/components/CreateStrategyModal";
 import ActiveChecklist from "@/components/ActiveChecklist";
+import UserMenu from "@/components/UserMenu";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export interface ChecklistItem {
   id: string;
@@ -37,45 +41,82 @@ export interface TradingStrategy {
   completedTrades: number;
 }
 
-const defaultStrategy: TradingStrategy = {
-  id: "default",
-  name: "Sector Momentum Strategy",
-  description: "Default trading strategy focusing on sector strength and volume analysis",
-  checklist: [
-    { id: "1", text: "Check sector strength", completed: false },
-    { id: "2", text: "Check sector top 5 stocks", completed: false },
-    { id: "3", text: "Check pre-market time and sales - active buy > active sell by 2x", completed: false },
-    { id: "4", text: "Check turnover rate > 20% in active trading session", completed: false },
-    { id: "5", text: "Check volume breakout from 50-day AVOL", completed: false },
-    { id: "6", text: "Check volume ratio > 2.5%", completed: false },
-    { id: "7", text: "Check price above EMA 10 and 5", completed: false },
-  ],
-  createdAt: new Date(),
-  completedTrades: 0,
-};
-
 const Index = () => {
-  const [strategies, setStrategies] = useState<TradingStrategy[]>([defaultStrategy]);
+  const [strategies, setStrategies] = useState<TradingStrategy[]>([]);
   const [activeStrategy, setActiveStrategy] = useState<TradingStrategy | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [currentTicker, setCurrentTicker] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
-  const handleCreateStrategy = (name: string, description: string, checklist: string[]) => {
-    const newStrategy: TradingStrategy = {
-      id: Date.now().toString(),
-      name,
-      description,
-      checklist: checklist.map((item, index) => ({
+  useEffect(() => {
+    if (user) {
+      fetchStrategies();
+    }
+  }, [user]);
+
+  const fetchStrategies = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('strategies')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        const formattedStrategies = data.map(strategy => ({
+          id: strategy.id,
+          name: strategy.name,
+          description: strategy.description || undefined,
+          checklist: strategy.checklist as unknown as ChecklistItem[],
+          createdAt: new Date(strategy.created_at),
+          completedTrades: strategy.completed_trades
+        }));
+        setStrategies(formattedStrategies);
+      }
+    } catch (error: any) {
+      toast.error("Error loading strategies: " + error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreateStrategy = async (name: string, description: string, checklist: string[]) => {
+    try {
+      const checklistItems = checklist.map((item, index) => ({
         id: (index + 1).toString(),
         text: item,
         completed: false,
-      })),
-      createdAt: new Date(),
-      completedTrades: 0,
-    };
-    setStrategies([...strategies, newStrategy]);
-    setIsCreateModalOpen(false);
+      }));
+
+      const { data, error } = await supabase
+        .from('strategies')
+        .insert([
+          {
+            name,
+            description: description || null,
+            checklist: checklistItems,
+            user_id: user!.id,
+          },
+        ])
+        .select();
+
+      if (error) {
+        throw error;
+      }
+
+      toast.success("Strategy created successfully!");
+      fetchStrategies();
+    } catch (error: any) {
+      toast.error("Error creating strategy: " + error.message);
+    } finally {
+      setIsCreateModalOpen(false);
+    }
   };
 
   const handleStartChecklist = (strategy: TradingStrategy) => {
@@ -87,43 +128,40 @@ const Index = () => {
     setCurrentTicker("");
   };
 
-  const handleCompleteChecklist = () => {
-    if (activeStrategy) {
-      // Create new trade
-      const newTrade: Trade = {
-        id: Date.now().toString(),
-        strategyId: activeStrategy.id,
-        ticker: currentTicker,
-        entryPrice: null,
-        exitPrice: null,
-        entryDate: new Date(),
-        exitDate: null,
-        pnl: null,
-        pnlValue: null,
-        sharesQuantity: null,
-        isOpen: true
-      };
+  const handleCompleteChecklist = async () => {
+    if (activeStrategy && user) {
+      try {
+        // Create new trade in Supabase
+        const { error } = await supabase
+          .from('trades')
+          .insert([
+            {
+              strategy_id: activeStrategy.id,
+              ticker: currentTicker,
+              is_open: true,
+              user_id: user.id
+            },
+          ]);
 
-      // Save trade to localStorage
-      const existingTrades = JSON.parse(localStorage.getItem('trades') || '[]');
-      localStorage.setItem('trades', JSON.stringify([...existingTrades, newTrade]));
+        if (error) {
+          throw error;
+        }
 
-      // Update strategy completedTrades count
-      setStrategies(strategies.map(s => 
-        s.id === activeStrategy.id 
-          ? { ...s, completedTrades: s.completedTrades + 1 }
-          : s
-      ));
-      
-      // Save updated strategies to localStorage
-      localStorage.setItem('strategies', JSON.stringify(strategies.map(s => 
-        s.id === activeStrategy.id 
-          ? { ...s, completedTrades: s.completedTrades + 1 }
-          : s
-      )));
+        // Update strategy completed_trades count
+        await supabase
+          .from('strategies')
+          .update({ completed_trades: activeStrategy.completedTrades + 1 })
+          .eq('id', activeStrategy.id);
 
-      setActiveStrategy(null);
-      setCurrentTicker("");
+        toast.success("Trade started successfully!");
+        
+        // Refresh strategies to get updated count
+        fetchStrategies();
+        setActiveStrategy(null);
+        setCurrentTicker("");
+      } catch (error: any) {
+        toast.error("Error creating trade: " + error.message);
+      }
     }
   };
 
@@ -142,23 +180,13 @@ const Index = () => {
     setCurrentTicker(ticker.toUpperCase());
   };
 
-  const completedItems = activeStrategy?.checklist.filter(item => item.completed).length || 0;
-  const totalItems = activeStrategy?.checklist.length || 0;
-  const progressPercentage = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
-
   const navigateToTradesHistory = () => {
     navigate('/trades');
   };
 
-  // Load strategies from localStorage on initial render
-  React.useEffect(() => {
-    const savedStrategies = localStorage.getItem('strategies');
-    if (savedStrategies) {
-      setStrategies(JSON.parse(savedStrategies));
-    } else {
-      localStorage.setItem('strategies', JSON.stringify([defaultStrategy]));
-    }
-  }, []);
+  const completedItems = activeStrategy?.checklist.filter(item => item.completed).length || 0;
+  const totalItems = activeStrategy?.checklist.length || 0;
+  const progressPercentage = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
 
   if (activeStrategy) {
     return (
@@ -177,14 +205,16 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-4">
       <div className="max-w-md mx-auto space-y-6">
-        {/* Header */}
-        <div className="text-center py-6">
-          <div className="flex items-center justify-center mb-2">
+        {/* Header with User Menu */}
+        <div className="flex items-center justify-between py-6">
+          <div className="flex items-center">
             <TrendingUp className="w-8 h-8 text-green-400 mr-2" />
             <h1 className="text-3xl font-bold text-white">Trading Journal</h1>
           </div>
-          <p className="text-slate-300">Master your trading strategies</p>
+          <UserMenu />
         </div>
+        
+        <p className="text-slate-300 text-center">Master your trading strategies</p>
 
         {/* Stats Overview */}
         <div className="grid grid-cols-2 gap-4">
@@ -218,15 +248,31 @@ const Index = () => {
             </Button>
           </div>
 
-          <div className="space-y-3">
-            {strategies.map((strategy) => (
-              <StrategyCard
-                key={strategy.id}
-                strategy={strategy}
-                onStart={() => handleStartChecklist(strategy)}
-              />
-            ))}
-          </div>
+          {isLoading ? (
+            <div className="flex justify-center py-8">
+              <div className="text-slate-400">Loading strategies...</div>
+            </div>
+          ) : strategies.length === 0 ? (
+            <Card className="bg-slate-800/50 border-slate-700 p-6 text-center">
+              <p className="text-slate-400 mb-4">No strategies found</p>
+              <Button 
+                onClick={() => setIsCreateModalOpen(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Create Your First Strategy
+              </Button>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {strategies.map((strategy) => (
+                <StrategyCard
+                  key={strategy.id}
+                  strategy={strategy}
+                  onStart={() => handleStartChecklist(strategy)}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Quick Actions */}
@@ -234,16 +280,10 @@ const Index = () => {
           <CardHeader>
             <CardTitle className="text-white flex items-center">
               <Clock className="w-5 h-5 mr-2 text-blue-400" />
-              Quick Start
+              Quick Actions
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button
-              onClick={() => handleStartChecklist(defaultStrategy)}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-            >
-              Start Default Strategy
-            </Button>
             <Button
               onClick={navigateToTradesHistory}
               className="w-full bg-slate-600 hover:bg-slate-700 text-white"

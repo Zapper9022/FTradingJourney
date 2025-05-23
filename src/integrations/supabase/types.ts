@@ -9,7 +9,107 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      strategies: {
+        Row: {
+          checklist: Json
+          completed_trades: number
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          user_id: string
+        }
+        Insert: {
+          checklist: Json
+          completed_trades?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          user_id: string
+        }
+        Update: {
+          checklist?: Json
+          completed_trades?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      trades: {
+        Row: {
+          entry_date: string
+          entry_price: number | null
+          exit_date: string | null
+          exit_price: number | null
+          id: string
+          is_open: boolean
+          pnl: number | null
+          pnl_value: number | null
+          shares_quantity: number | null
+          strategy_id: string
+          ticker: string
+          user_id: string
+        }
+        Insert: {
+          entry_date?: string
+          entry_price?: number | null
+          exit_date?: string | null
+          exit_price?: number | null
+          id?: string
+          is_open?: boolean
+          pnl?: number | null
+          pnl_value?: number | null
+          shares_quantity?: number | null
+          strategy_id: string
+          ticker: string
+          user_id: string
+        }
+        Update: {
+          entry_date?: string
+          entry_price?: number | null
+          exit_date?: string | null
+          exit_price?: number | null
+          id?: string
+          is_open?: boolean
+          pnl?: number | null
+          pnl_value?: number | null
+          shares_quantity?: number | null
+          strategy_id?: string
+          ticker?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trades_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "strategies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

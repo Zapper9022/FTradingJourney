@@ -7,22 +7,56 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "@
 import { ArrowLeft, Clock, ChevronRight, TrendingUp, TrendingDown } from "lucide-react";
 import { Trade } from "./Index";
 import { format } from "date-fns";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const TradesHistory = () => {
   const [trades, setTrades] = useState<Trade[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
-    // Load trades from localStorage
-    const savedTrades = localStorage.getItem('trades');
-    if (savedTrades) {
-      setTrades(JSON.parse(savedTrades).map((trade: any) => ({
-        ...trade,
-        entryDate: new Date(trade.entryDate),
-        exitDate: trade.exitDate ? new Date(trade.exitDate) : null
-      })));
+    if (user) {
+      fetchTrades();
     }
-  }, []);
+  }, [user]);
+
+  const fetchTrades = async () => {
+    try {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from('trades')
+        .select('*')
+        .order('entry_date', { ascending: false });
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        const formattedTrades = data.map(trade => ({
+          id: trade.id,
+          strategyId: trade.strategy_id,
+          ticker: trade.ticker,
+          entryPrice: trade.entry_price,
+          exitPrice: trade.exit_price,
+          entryDate: new Date(trade.entry_date),
+          exitDate: trade.exit_date ? new Date(trade.exit_date) : null,
+          pnl: trade.pnl,
+          pnlValue: trade.pnl_value,
+          sharesQuantity: trade.shares_quantity,
+          isOpen: trade.is_open
+        }));
+        setTrades(formattedTrades);
+      }
+    } catch (error: any) {
+      toast.error("Error loading trades: " + error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const goBack = () => {
     navigate('/');
@@ -60,7 +94,11 @@ const TradesHistory = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {trades.length === 0 ? (
+            {isLoading ? (
+              <div className="text-center py-8">
+                <p className="text-slate-400">Loading trades...</p>
+              </div>
+            ) : trades.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-slate-400">No trades recorded yet</p>
                 <Button 
