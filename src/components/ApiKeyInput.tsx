@@ -53,7 +53,7 @@ const ApiKeyInput = ({ onKeySubmit }: ApiKeyInputProps) => {
   return (
     <Card className="bg-slate-800/50 border-slate-700">
       <CardHeader>
-        <CardTitle className="text-white">Stock Price API</CardTitle>
+        <CardTitle className="text-white">Alpha Vantage API</CardTitle>
         <CardDescription className="text-slate-300">
           A default API key is provided for you, but you can use your own if needed
         </CardDescription>
@@ -74,7 +74,7 @@ const ApiKeyInput = ({ onKeySubmit }: ApiKeyInputProps) => {
             />
             <p className="text-xs text-slate-400 flex items-start gap-1">
               <InfoIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-              <span>A default key is provided, but you can get your own from <a href="https://rapidapi.com/alphavantage/api/alpha-vantage/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">RapidAPI</a> if needed.</span>
+              <span>Using Alpha Vantage Global Quote API. Get your own key from <a href="https://rapidapi.com/alphavantage/api/alpha-vantage/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">RapidAPI</a> if needed.</span>
             </p>
           </div>
           <Button 

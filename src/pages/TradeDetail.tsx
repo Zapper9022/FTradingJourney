@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -121,7 +120,7 @@ const TradeDetail = () => {
       );
       
       if (!response.ok) {
-        throw new Error('Failed to fetch stock data');
+        throw new Error(`Failed to fetch stock data: ${response.status}`);
       }
       
       const data = await response.json();
@@ -129,69 +128,44 @@ const TradeDetail = () => {
       
       if (data && data["Global Quote"] && data["Global Quote"]["05. price"]) {
         // Alpha Vantage format
-        const price = data["Global Quote"]["05. price"];
+        const price = parseFloat(data["Global Quote"]["05. price"]);
         setCurrentPrice(price.toString());
         
         // Calculate PnL automatically if we have entry price
         if (entryPrice) {
-          calculatePnLWithPrice(parseFloat(entryPrice), parseFloat(price));
+          calculatePnLWithPrice(parseFloat(entryPrice), price);
         }
         
         toast({
           title: "Price Updated",
-          description: `Current price for ${ticker}: $${parseFloat(price).toFixed(2)}`,
+          description: `Current price for ${ticker}: $${price.toFixed(2)}`,
         });
+      } else if (data && data.Note) {
+        // API limit reached
+        throw new Error(`API limit reached: ${data.Note}`);
       } else {
-        console.log("Trying with fallback demo data for:", formattedTicker);
-        // Fallback to demo data if API doesn't return price
-        const demoPrice = getDemoPriceForTicker(formattedTicker);
-        if (demoPrice) {
-          setCurrentPrice(demoPrice.toString());
-          
-          if (entryPrice) {
-            calculatePnLWithPrice(parseFloat(entryPrice), demoPrice);
-          }
-          
-          toast({
-            title: "Demo Price Used",
-            description: `Using demo price for ${ticker}: $${demoPrice.toFixed(2)}`,
-          });
-        } else {
-          throw new Error('No price data available');
-        }
+        throw new Error('No price data available for this ticker');
       }
     } catch (error) {
       console.error("Error fetching stock data:", error);
+      
+      let errorMessage = "Could not fetch current price. Please try again later.";
+      if (error instanceof Error) {
+        if (error.message.includes("API limit")) {
+          errorMessage = "API call limit reached. Please try again in a minute or update manually.";
+        } else if (error.message.includes("ticker")) {
+          errorMessage = "No data available for this ticker symbol. Please check if it's correct.";
+        }
+      }
+      
       toast({
         title: "API Error",
-        description: "Using manual mode due to API limits. Please enter the current price manually.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Fallback demo data for common stocks
-  const getDemoPriceForTicker = (ticker: string): number | null => {
-    const demoPrices: Record<string, number> = {
-      'AAPL': 198.45,
-      'MSFT': 415.28,
-      'GOOGL': 165.72,
-      'AMZN': 182.50,
-      'TSLA': 195.38,
-      'META': 472.22,
-      'NVDA': 927.78,
-      'JNJ': 147.65,
-      'V': 270.36,
-      'WMT': 79.45,
-      'JPM': 198.46,
-      'BAC': 38.75,
-      'PG': 165.82,
-      'DIS': 99.28
-    };
-    
-    return demoPrices[ticker] || null;
   };
 
   const calculatePnLWithPrice = (entry: number, current: number) => {
