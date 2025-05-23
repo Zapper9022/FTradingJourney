@@ -74,7 +74,7 @@ const ApiKeyInput = ({ onKeySubmit }: ApiKeyInputProps) => {
             />
             <p className="text-xs text-slate-400 flex items-start gap-1">
               <InfoIcon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-              <span>A default key is provided, but you can get your own from <a href="https://rapidapi.com/suneetk92/api/latest-stock-price/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">RapidAPI</a> if needed.</span>
+              <span>A default key is provided, but you can get your own from <a href="https://rapidapi.com/alphavantage/api/alpha-vantage/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">RapidAPI</a> if needed.</span>
             </p>
           </div>
           <Button 

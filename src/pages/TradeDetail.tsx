@@ -90,12 +90,12 @@ const TradeDetail = () => {
   const fetchCurrentPrice = async (ticker: string, key: string) => {
     setIsLoading(true);
     try {
-      // Using RapidAPI endpoint with the provided key
+      // Using Alpha Vantage API endpoint with the provided key
       const response = await fetch(
-        `https://latest-stock-price.p.rapidapi.com/timeseries?Symbol=${ticker}&Timescale=1&Period=1DAY`, 
+        `https://alpha-vantage.p.rapidapi.com/query?function=GLOBAL_QUOTE&symbol=${ticker}&datatype=json`, 
         {
           headers: {
-            'x-rapidapi-host': 'latest-stock-price.p.rapidapi.com',
+            'x-rapidapi-host': 'alpha-vantage.p.rapidapi.com',
             'x-rapidapi-key': key,
             'Content-Type': 'application/json',
           },
@@ -107,15 +107,16 @@ const TradeDetail = () => {
       }
       
       const data = await response.json();
+      console.log("API Response:", data);
       
-      if (data && data.length > 0) {
-        // RapidAPI format
-        const price = data[0].Last;
+      if (data && data["Global Quote"] && data["Global Quote"]["05. price"]) {
+        // Alpha Vantage format
+        const price = data["Global Quote"]["05. price"];
         setCurrentPrice(price.toString());
         
         // Calculate PnL automatically if we have entry price
         if (entryPrice) {
-          calculatePnLWithPrice(parseFloat(entryPrice), price);
+          calculatePnLWithPrice(parseFloat(entryPrice), parseFloat(price));
         }
         
         toast({
@@ -129,7 +130,7 @@ const TradeDetail = () => {
       console.error("Error fetching stock data:", error);
       toast({
         title: "API Error",
-        description: "The API may have usage limits. You can try updating the price manually.",
+        description: "Could not fetch current price. Try updating manually or check the ticker symbol.",
         variant: "destructive",
       });
     } finally {
