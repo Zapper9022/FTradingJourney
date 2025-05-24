@@ -10,6 +10,7 @@ import TradesHistory from "./pages/TradesHistory";
 import TradeDetail from "./pages/TradeDetail";
 import Login from "./pages/Login";
 import SignUp from "./pages/SignUp";
+import StrategiesManagement from "./pages/StrategiesManagement";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./contexts/AuthContext";
 
@@ -41,6 +42,11 @@ const App = () => (
             <Route path="/trades/:tradeId" element={
               <ProtectedRoute>
                 <TradeDetail />
+              </ProtectedRoute>
+            } />
+            <Route path="/strategies" element={
+              <ProtectedRoute>
+                <StrategiesManagement />
               </ProtectedRoute>
             } />
             

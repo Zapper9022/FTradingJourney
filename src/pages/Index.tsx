@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, TrendingUp, CheckCircle, Clock, BarChart3 } from "lucide-react";
+import { Plus, TrendingUp, CheckCircle, Clock, BarChart3, Settings } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import StrategyCard from "@/components/StrategyCard";
 import CreateStrategyModal from "@/components/CreateStrategyModal";
@@ -184,6 +183,10 @@ const Index = () => {
     navigate('/trades');
   };
 
+  const navigateToStrategiesManagement = () => {
+    navigate('/strategies');
+  };
+
   const completedItems = activeStrategy?.checklist.filter(item => item.completed).length || 0;
   const totalItems = activeStrategy?.checklist.length || 0;
   const progressPercentage = totalItems > 0 ? (completedItems / totalItems) * 100 : 0;
@@ -226,7 +229,7 @@ const Index = () => {
               <div className="text-sm text-slate-400">Total Trades</div>
             </CardContent>
           </Card>
-          <Card className="bg-slate-800/50 border-slate-700">
+          <Card className="bg-slate-800/50 border-slate-700 cursor-pointer hover:bg-slate-800/70 transition-colors" onClick={navigateToStrategiesManagement}>
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-blue-400">{strategies.length}</div>
               <div className="text-sm text-slate-400">Strategies</div>
@@ -238,14 +241,25 @@ const Index = () => {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-white">Trading Strategies</h2>
-            <Button
-              onClick={() => setIsCreateModalOpen(true)}
-              size="sm"
-              className="bg-green-600 hover:bg-green-700 text-white"
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Add Strategy
-            </Button>
+            <div className="flex space-x-2">
+              <Button
+                onClick={navigateToStrategiesManagement}
+                size="sm"
+                variant="outline"
+                className="border-slate-600 text-slate-300 hover:bg-slate-700 hover:text-white"
+              >
+                <Settings className="w-4 h-4 mr-1" />
+                Manage
+              </Button>
+              <Button
+                onClick={() => setIsCreateModalOpen(true)}
+                size="sm"
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Add
+              </Button>
+            </div>
           </div>
 
           {isLoading ? (
