@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -209,16 +208,18 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-4">
       <div className="max-w-md mx-auto space-y-6">
-        {/* Centered Header with User Menu */}
-        <div className="flex flex-col items-center py-6">
+        {/* User Menu positioned at the top right */}
+        <div className="absolute top-4 right-4">
+          <UserMenu />
+        </div>
+        
+        {/* Centered Header moved down */}
+        <div className="flex flex-col items-center py-12">
           <div className="flex items-center justify-center w-full mb-2">
             <TrendingUp className="w-8 h-8 text-green-400 mr-2" />
             <h1 className="text-3xl font-bold text-white">FTrading Journal</h1>
           </div>
           <p className="text-slate-300 text-center">Master your trading strategies</p>
-          <div className="absolute top-4 right-4">
-            <UserMenu />
-          </div>
         </div>
         
         {/* Stats Overview */}

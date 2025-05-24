@@ -11,19 +11,50 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 
+interface Strategy {
+  id: string;
+  name: string;
+}
+
+interface TradeWithStrategy extends Trade {
+  strategyName?: string;
+}
+
 const TradesHistory = () => {
-  const [trades, setTrades] = useState<Trade[]>([]);
+  const [trades, setTrades] = useState<TradeWithStrategy[]>([]);
+  const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const { user } = useAuth();
 
   useEffect(() => {
     if (user) {
-      fetchTrades();
+      fetchStrategies();
     }
   }, [user]);
 
-  const fetchTrades = async () => {
+  const fetchStrategies = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('strategies')
+        .select('id, name');
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        setStrategies(data as Strategy[]);
+        fetchTrades(data as Strategy[]);
+      }
+    } catch (error: any) {
+      toast.error("Error loading strategies: " + error.message);
+      // Still try to fetch trades even if strategies load fails
+      fetchTrades([]);
+    }
+  };
+
+  const fetchTrades = async (strategiesList: Strategy[]) => {
     try {
       setIsLoading(true);
       const { data, error } = await supabase
@@ -36,19 +67,24 @@ const TradesHistory = () => {
       }
 
       if (data) {
-        const formattedTrades = data.map(trade => ({
-          id: trade.id,
-          strategyId: trade.strategy_id,
-          ticker: trade.ticker,
-          entryPrice: trade.entry_price,
-          exitPrice: trade.exit_price,
-          entryDate: new Date(trade.entry_date),
-          exitDate: trade.exit_date ? new Date(trade.exit_date) : null,
-          pnl: trade.pnl,
-          pnlValue: trade.pnl_value,
-          sharesQuantity: trade.shares_quantity,
-          isOpen: trade.is_open
-        }));
+        const formattedTrades = data.map(trade => {
+          const matchingStrategy = strategiesList.find(s => s.id === trade.strategy_id);
+          
+          return {
+            id: trade.id,
+            strategyId: trade.strategy_id,
+            strategyName: matchingStrategy?.name || 'Unknown Strategy',
+            ticker: trade.ticker,
+            entryPrice: trade.entry_price,
+            exitPrice: trade.exit_price,
+            entryDate: new Date(trade.entry_date),
+            exitDate: trade.exit_date ? new Date(trade.exit_date) : null,
+            pnl: trade.pnl,
+            pnlValue: trade.pnl_value,
+            sharesQuantity: trade.shares_quantity,
+            isOpen: trade.is_open
+          };
+        });
         setTrades(formattedTrades);
       }
     } catch (error: any) {
@@ -114,6 +150,7 @@ const TradesHistory = () => {
                   <TableHeader>
                     <TableRow className="border-slate-700">
                       <TableHead className="text-slate-300">Ticker</TableHead>
+                      <TableHead className="text-slate-300">Strategy</TableHead>
                       <TableHead className="text-slate-300">Date</TableHead>
                       <TableHead className="text-slate-300">Status</TableHead>
                       <TableHead className="text-slate-300 text-right">P&L</TableHead>
@@ -129,6 +166,9 @@ const TradesHistory = () => {
                       >
                         <TableCell className="font-medium text-white">
                           {trade.ticker}
+                        </TableCell>
+                        <TableCell className="text-blue-300 text-xs">
+                          {trade.strategyName}
                         </TableCell>
                         <TableCell className="text-slate-300">
                           {format(trade.entryDate, 'MMM d')}

@@ -33,7 +33,7 @@ const Login = () => {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center mb-2">
             <TrendingUp className="w-8 h-8 text-green-400 mr-2" />
-            <h1 className="text-3xl font-bold text-white">Trading Journal</h1>
+            <h1 className="text-3xl font-bold text-white">FTrading Journal</h1>
           </div>
           <p className="text-slate-300">Log in to manage your trading strategies</p>
         </div>
