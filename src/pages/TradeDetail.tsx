@@ -49,6 +49,15 @@ const TradeDetail = () => {
     }
   }, [tradeId, user, defaultApiKey]);
 
+  // New useEffect hook to fetch current price whenever trade changes
+  useEffect(() => {
+    // If we have both a trade with a ticker and an API key, fetch the price automatically
+    if (trade?.ticker && apiKey && hasApiKey) {
+      console.log(`Auto-fetching price for ${trade.ticker} on component mount...`);
+      fetchCurrentPrice(trade.ticker, apiKey);
+    }
+  }, [trade, apiKey, hasApiKey]);
+
   const fetchTradeFromSupabase = async () => {
     try {
       setIsLoading(true);
