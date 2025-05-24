@@ -30,10 +30,10 @@ const Login = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-4 flex items-center justify-center">
       <div className="max-w-md w-full">
-        <div className="text-center mb-8">
+        <div className="text-center mb-5">
           <div className="flex items-center justify-center mb-2">
-            <TrendingUp className="w-8 h-8 text-green-400 mr-2" />
-            <h1 className="text-3xl font-bold text-white">FTrading Journal</h1>
+            <TrendingUp className="w-8 h-8 text-green-400 mr-2 animate-bounce" />
+            <h1 className="text-3xl font-bold text-white animate-fade-in">FTrading Journal</h1>
           </div>
           <p className="text-slate-300">Log in to manage your trading strategies</p>
         </div>

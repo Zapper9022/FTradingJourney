@@ -207,19 +207,19 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 p-4">
-      <div className="max-w-md mx-auto space-y-6">
+      <div className="max-w-md mx-auto space-y-4">
         {/* User Menu positioned at the top right */}
         <div className="absolute top-4 right-4">
           <UserMenu />
         </div>
         
-        {/* Centered Header moved down */}
-        <div className="flex flex-col items-center py-12">
+        {/* Centered Header with animation */}
+        <div className="flex flex-col items-center pt-6 pb-4">
           <div className="flex items-center justify-center w-full mb-2">
-            <TrendingUp className="w-8 h-8 text-green-400 mr-2" />
-            <h1 className="text-3xl font-bold text-white">FTrading Journal</h1>
+            <TrendingUp className="w-8 h-8 text-green-400 mr-2 animate-bounce" />
+            <h1 className="text-3xl font-bold text-white animate-fade-in">FTrading Journal</h1>
           </div>
-          <p className="text-slate-300 text-center">Master your trading strategies</p>
+          <p className="text-slate-300 text-center animate-fade-in">Master your trading strategies</p>
         </div>
         
         {/* Stats Overview */}
@@ -242,7 +242,7 @@ const Index = () => {
 
         {/* Strategies Section */}
         <div>
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-3">
             <h2 className="text-xl font-semibold text-white">Trading Strategies</h2>
             <div className="flex space-x-2">
               <Button
